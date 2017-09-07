@@ -1,10 +1,10 @@
 NAME=registrator
 VERSION=$(shell cat VERSION)
-DEV_RUN_OPTS ?= consul:
+DEV_RUN_OPTS ?= -mode services consul://127.0.0.1:8500
 
 dev:
 	docker build -f Dockerfile.dev -t $(NAME):dev .
-	docker run --rm \
+	docker run --rm --net=host\
 		-v /var/run/docker.sock:/tmp/docker.sock \
 		$(NAME):dev /bin/registrator $(DEV_RUN_OPTS)
 
@@ -17,7 +17,7 @@ release:
 	rm -rf release && mkdir release
 	go get github.com/progrium/gh-release/...
 	cp build/* release
-	gh-release create gliderlabs/$(NAME) $(VERSION) \
+	gh-release create temskiy/$(NAME) $(VERSION) \
 		$(shell git rev-parse --abbrev-ref HEAD) $(VERSION)
 
 docs:

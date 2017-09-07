@@ -11,7 +11,7 @@ import (
 
 	dockerapi "github.com/fsouza/go-dockerclient"
 	"github.com/gliderlabs/pkg/usage"
-	"github.com/gliderlabs/registrator/bridge"
+	"github.com/temskiy/registrator/bridge"
 )
 
 var Version string
@@ -30,6 +30,7 @@ var deregister = flag.String("deregister", "always", "Deregister exited services
 var retryAttempts = flag.Int("retry-attempts", 0, "Max retry attempts to establish a connection with the backend. Use -1 for infinite retries")
 var retryInterval = flag.Int("retry-interval", 2000, "Interval (in millisecond) between retry-attempts.")
 var cleanup = flag.Bool("cleanup", false, "Remove dangling services")
+var mode = flag.String("mode", "containers", "Register \"containers\" or \"services\"")
 
 func getopt(name, def string) string {
 	if env := os.Getenv(name); env != "" {
@@ -45,11 +46,19 @@ func assert(err error) {
 }
 
 func main() {
+
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
 		versionChecker.PrintVersion()
 		os.Exit(0)
 	}
 	log.Printf("Starting registrator %s ...", Version)
+
+	if *mode == "services" {
+		log.Printf("Mode: services")
+	}
+	if *mode == "containers" {
+		log.Printf("Mode: containers")
+	}
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -88,6 +97,7 @@ func main() {
 	dockerHost := os.Getenv("DOCKER_HOST")
 	if dockerHost == "" {
 		os.Setenv("DOCKER_HOST", "unix:///tmp/docker.sock")
+		// os.Setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
 	}
 
 	docker, err := dockerapi.NewClientFromEnv()
@@ -107,6 +117,7 @@ func main() {
 		RefreshInterval: *refreshInterval,
 		DeregisterCheck: *deregister,
 		Cleanup:         *cleanup,
+		Mode:            *mode,
 	})
 
 	assert(err)
@@ -171,12 +182,23 @@ func main() {
 
 	// Process Docker events
 	for msg := range events {
-		switch msg.Status {
-		case "start":
-			go b.Add(msg.ID)
-		case "die":
-			go b.RemoveOnExit(msg.ID)
+
+		// switch *mode {
+		// case "containers":
+		// log.Printf(*mode)
+		// log.Printf(msg.Type)
+		// log.Printf(msg.ID + " " + msg.Action + " " + msg.Status)
+
+		if msg.Type == "container" {
+			switch msg.Status {
+			case "start":
+				go b.Add(msg.ID)
+
+			case "die":
+				go b.RemoveOnExit(msg.ID)
+			}
 		}
+
 	}
 
 	close(quit)

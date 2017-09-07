@@ -7,7 +7,7 @@ import (
 	"strings"
 	"strconv"
 	"os"
-	"github.com/gliderlabs/registrator/bridge"
+	"github.com/temskiy/registrator/bridge"
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/hashicorp/go-cleanhttp"
 )

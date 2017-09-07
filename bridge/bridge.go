@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/docker/docker/api/types/swarm"
 	dockerapi "github.com/fsouza/go-dockerclient"
 )
 
@@ -202,13 +203,26 @@ func (b *Bridge) add(containerId string, quiet bool) {
 
 	// Extract configured host port mappings, relevant when using --net=host
 	for port, _ := range container.Config.ExposedPorts {
-		published := []dockerapi.PortBinding{ {"0.0.0.0", port.Port()}, }
+		published := []dockerapi.PortBinding{{"0.0.0.0", port.Port()}}
 		ports[string(port)] = servicePort(container, port, published)
 	}
 
 	// Extract runtime port mappings, relevant when using --net=bridge
 	for port, published := range container.NetworkSettings.Ports {
 		ports[string(port)] = servicePort(container, port, published)
+	}
+
+	if b.config.Mode == "services" {
+		sn := container.Config.Labels["com.docker.swarm.service.name"]
+		if sn != "" {
+			for pp, sp := range ports {
+				gps := b.getPublishedServicePort(sn, sp.ExposedPort)
+				sp.HostPort = gps
+				ports[pp] = sp
+				log.Printf("Service HostPort:" + sp.HostPort)
+			}
+		}
+
 	}
 
 	if len(ports) == 0 && !quiet {
@@ -219,6 +233,7 @@ func (b *Bridge) add(containerId string, quiet bool) {
 	servicePorts := make(map[string]ServicePort)
 	for key, port := range ports {
 		if b.config.Internal != true && port.HostPort == "" {
+			log.Printf("HostPort:" + port.HostPort)
 			if !quiet {
 				log.Println("ignored:", container.ID[:12], "port", port.ExposedPort, "not published on host")
 			}
@@ -248,10 +263,16 @@ func (b *Bridge) add(containerId string, quiet bool) {
 
 func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 	container := port.container
-	defaultName := strings.Split(path.Base(container.Config.Image), ":")[0]
+	var defaultName string
+	if b.config.Mode == "services" {
+		defaultName = container.Config.Labels["com.docker.swarm.service.name"]
+	} else {
+		defaultName = strings.Split(path.Base(container.Config.Image), ":")[0]
+	}
 
 	// not sure about this logic. kind of want to remove it.
 	hostname := Hostname
+
 	if hostname == "" {
 		hostname = port.HostIP
 	}
@@ -264,6 +285,11 @@ func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 
 	if b.config.HostIp != "" {
 		port.HostIP = b.config.HostIp
+	}
+
+	if b.config.Mode == "services" {
+		nn, _ := b.docker.InspectNode(hostname)
+		port.HostIP = nn.Status.Addr
 	}
 
 	metadata, metadataFromPort := serviceMetaData(container.Config, port.ExposedPort)
@@ -309,7 +335,7 @@ func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 				service.IP = containerIp
 			}
 			log.Println("using container IP " + service.IP + " from label '" +
-				b.config.UseIpFromLabel  + "'")
+				b.config.UseIpFromLabel + "'")
 		} else {
 			log.Println("Label '" + b.config.UseIpFromLabel +
 				"' not found in container configuration")
@@ -411,6 +437,29 @@ func (b *Bridge) shouldRemove(containerId string) bool {
 		return true
 	}
 	return false
+}
+
+func (b *Bridge) getServicePorts(name string) []swarm.PortConfig {
+	var opt dockerapi.ListServicesOptions
+	ff := make(map[string][]string)
+	ff["name"] = []string{name}
+	opt.Filters = ff
+	nn, err := b.docker.ListServices(opt)
+	if err != nil {
+		return nil
+	}
+
+	return nn[0].Spec.EndpointSpec.Ports
+}
+
+func (b *Bridge) getPublishedServicePort(servicename string, port string) string {
+	ports := b.getServicePorts(servicename)
+	for i := 0; i < len(ports); i++ {
+		if strconv.Itoa(int(ports[i].TargetPort)) == port {
+			return strconv.Itoa(int(ports[i].PublishedPort))
+		}
+	}
+	return ""
 }
 
 var Hostname string
