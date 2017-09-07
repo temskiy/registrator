@@ -97,7 +97,7 @@ func main() {
 	dockerHost := os.Getenv("DOCKER_HOST")
 	if dockerHost == "" {
 		os.Setenv("DOCKER_HOST", "unix:///tmp/docker.sock")
-		// os.Setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
+
 	}
 
 	docker, err := dockerapi.NewClientFromEnv()
