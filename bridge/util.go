@@ -90,6 +90,7 @@ func servicePort(container *dockerapi.Container, port dockerapi.Port, published 
 		hp = published[0].HostPort
 		hip = published[0].HostIP
 	}
+
 	if hip == "" {
 		hip = "0.0.0.0"
 	}

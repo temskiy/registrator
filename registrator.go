@@ -53,13 +53,6 @@ func main() {
 	}
 	log.Printf("Starting registrator %s ...", Version)
 
-	if *mode == "services" {
-		log.Printf("Mode: services")
-	}
-	if *mode == "containers" {
-		log.Printf("Mode: containers")
-	}
-
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s [options] <registry URI>\n\n", os.Args[0])
@@ -182,12 +175,6 @@ func main() {
 
 	// Process Docker events
 	for msg := range events {
-
-		// switch *mode {
-		// case "containers":
-		// log.Printf(*mode)
-		// log.Printf(msg.Type)
-		// log.Printf(msg.ID + " " + msg.Action + " " + msg.Status)
 
 		if msg.Type == "container" {
 			switch msg.Status {

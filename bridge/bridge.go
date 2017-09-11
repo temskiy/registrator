@@ -28,6 +28,12 @@ type Bridge struct {
 }
 
 func New(docker *dockerapi.Client, adapterUri string, config Config) (*Bridge, error) {
+	if config.Mode == "services" {
+		log.Printf("Mode: services")
+	}
+	if config.Mode == "containers" {
+		log.Printf("Mode: containers")
+	}
 	uri, err := url.Parse(adapterUri)
 	if err != nil {
 		return nil, errors.New("bad adapter uri: " + adapterUri)
@@ -203,15 +209,23 @@ func (b *Bridge) add(containerId string, quiet bool) {
 
 	// Extract configured host port mappings, relevant when using --net=host
 	for port, _ := range container.Config.ExposedPorts {
-		published := []dockerapi.PortBinding{{"0.0.0.0", port.Port()}}
-		ports[string(port)] = servicePort(container, port, published)
-	}
+		var ad string
+		if b.getNodeStatus() != "leader" {
+			ad = "0.0.0.0"
+		} else {
+			ad = b.getLeaderAddress()
+		}
 
-	// Extract runtime port mappings, relevant when using --net=bridge
-	for port, published := range container.NetworkSettings.Ports {
+		published := []dockerapi.PortBinding{{ad, port.Port()}}
 		ports[string(port)] = servicePort(container, port, published)
-	}
 
+	}
+	if b.getNodeStatus() != "leader" {
+		// Extract runtime port mappings, relevant when using --net=bridge
+		for port, published := range container.NetworkSettings.Ports {
+			ports[string(port)] = servicePort(container, port, published)
+		}
+	}
 	if b.config.Mode == "services" {
 		sn := container.Config.Labels["com.docker.swarm.service.name"]
 		if sn != "" {
@@ -219,7 +233,7 @@ func (b *Bridge) add(containerId string, quiet bool) {
 				gps := b.getPublishedServicePort(sn, sp.ExposedPort)
 				sp.HostPort = gps
 				ports[pp] = sp
-				log.Printf("Service HostPort:" + sp.HostPort)
+
 			}
 		}
 
@@ -233,7 +247,7 @@ func (b *Bridge) add(containerId string, quiet bool) {
 	servicePorts := make(map[string]ServicePort)
 	for key, port := range ports {
 		if b.config.Internal != true && port.HostPort == "" {
-			log.Printf("HostPort:" + port.HostPort)
+
 			if !quiet {
 				log.Println("ignored:", container.ID[:12], "port", port.ExposedPort, "not published on host")
 			}
@@ -270,12 +284,8 @@ func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 		defaultName = strings.Split(path.Base(container.Config.Image), ":")[0]
 	}
 
-	// not sure about this logic. kind of want to remove it.
 	hostname := Hostname
 
-	if hostname == "" {
-		hostname = port.HostIP
-	}
 	if port.HostIP == "0.0.0.0" {
 		ip, err := net.ResolveIPAddr("ip", hostname)
 		if err == nil {
@@ -283,13 +293,21 @@ func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 		}
 	}
 
+	if hostname == "" {
+		hostname = port.HostIP
+	}
+
 	if b.config.HostIp != "" {
 		port.HostIP = b.config.HostIp
 	}
 
 	if b.config.Mode == "services" {
-		nn, _ := b.docker.InspectNode(hostname)
-		port.HostIP = nn.Status.Addr
+		if b.getNodeStatus() != "leader" {
+			nn, _ := b.docker.InspectNode(hostname)
+			port.HostIP = nn.Status.Addr
+		} else {
+			port.HostIP = b.getLeaderAddress()
+		}
 	}
 
 	metadata, metadataFromPort := serviceMetaData(container.Config, port.ExposedPort)
@@ -460,6 +478,23 @@ func (b *Bridge) getPublishedServicePort(servicename string, port string) string
 		}
 	}
 	return ""
+}
+func (b *Bridge) getNodeStatus() string {
+	sn, _ := b.docker.InspectNode(Hostname)
+	if sn.ManagerStatus.Leader == true {
+
+		return "leader"
+
+	}
+
+	return string(sn.Spec.Role)
+}
+
+func (b *Bridge) getLeaderAddress() string {
+	sn, _ := b.docker.InspectNode(Hostname)
+	aa := strings.Split(sn.ManagerStatus.Addr, ":")[0]
+
+	return aa
 }
 
 var Hostname string

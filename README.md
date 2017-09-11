@@ -36,7 +36,7 @@ Guide. Typically, running Registrator looks like this:
         --name=registrator \
         --net=host \
         --volume=/var/run/docker.sock:/tmp/docker.sock \
-        temskiy/registrator:latest -mode=services\
+        temskiy/registrator:latest -mode services\
           consul://localhost:8500
 
 ## CLI Options

@@ -7,4 +7,4 @@ COPY . /go/src/github.com/temskiy/registrator
 RUN cd /go/src/github.com/temskiy/registrator \
   && git config --global http.https://gopkg.in.followRedirects true \
 	&& go get \
-	&& go build -ldflags "-X main.Version=dev" -o /bin/registrator
+	&& go build -ldflags "-X main.Version=$(cat VERSION):dev" -o /bin/registrator
