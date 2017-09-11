@@ -19,7 +19,7 @@ Full documentation available at http://gliderlabs.com/registrator
 
 Get the latest release, master, or any version of Registrator via [Docker Hub](https://registry.hub.docker.com/u/gliderlabs/registrator/):
 
-	$ docker pull gliderlabs/registrator:latest
+	$ docker pull temskiy/registrator:latest
 
 Latest tag always points to the latest release. There is also a `:master` tag
 and version tags to pin to specific releases.
