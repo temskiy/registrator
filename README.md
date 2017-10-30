@@ -19,7 +19,7 @@ Full documentation available at http://gliderlabs.com/registrator
 
 Get the latest release, master, or any version of Registrator via [Docker Hub](https://registry.hub.docker.com/u/gliderlabs/registrator/):
 
-	$ docker pull gliderlabs/registrator:latest
+	$ docker pull temskiy/registrator:latest
 
 Latest tag always points to the latest release. There is also a `:master` tag
 and version tags to pin to specific releases.
@@ -54,7 +54,7 @@ Usage of /bin/registrator:
   -tags="": Append tags for all registered services
   -ttl=0: TTL for services (default is no expiry)
   -ttl-refresh=0: Frequency with which service TTLs are refreshed
-  -mode=containers: Commonly, containers started as part of swarm services connected to ingress network not registered, because have not published port at host. With -mode=services thats containers will be registered with name = name of service, IP = node IP and published port(s) = published port(s) of service
+  -mode=containers: Commonly, containers started as part of swarm services connected to ingress network not registered, because have not published port at host. With "-mode services" thats containers will be registered with name = name of service, IP = node IP and published port(s) = published port(s) of service
 ```
 
 ## Contributing
