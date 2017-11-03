@@ -89,7 +89,8 @@ func main() {
 
 	dockerHost := os.Getenv("DOCKER_HOST")
 	if dockerHost == "" {
-		os.Setenv("DOCKER_HOST", "unix:///tmp/docker.sock")
+		// os.Setenv("DOCKER_HOST", "unix:///tmp/docker.sock")
+		os.Setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
 
 	}
 
@@ -182,6 +183,8 @@ func main() {
 				go b.Add(msg.ID)
 
 			case "die":
+				go b.RemoveOnExit(msg.ID)
+			case "kill":
 				go b.RemoveOnExit(msg.ID)
 			}
 		}

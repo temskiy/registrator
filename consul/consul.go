@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net/url"
-	"strings"
-	"strconv"
 	"os"
-	"github.com/temskiy/registrator/bridge"
+	"strconv"
+	"strings"
+
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/hashicorp/go-cleanhttp"
+	"github.com/temskiy/registrator/bridge"
 )
 
 const DefaultInterval = "10s"
@@ -34,16 +35,16 @@ func (f *Factory) New(uri *url.URL) bridge.RegistryAdapter {
 	if uri.Scheme == "consul-unix" {
 		config.Address = strings.TrimPrefix(uri.String(), "consul-")
 	} else if uri.Scheme == "consul-tls" {
-	        tlsConfigDesc := &consulapi.TLSConfig {
-			  Address: uri.Host,
-			  CAFile: os.Getenv("CONSUL_CACERT"),
-  			  CertFile: os.Getenv("CONSUL_TLSCERT"),
-  			  KeyFile: os.Getenv("CONSUL_TLSKEY"),
-			  InsecureSkipVerify: false,
+		tlsConfigDesc := &consulapi.TLSConfig{
+			Address:            uri.Host,
+			CAFile:             os.Getenv("CONSUL_CACERT"),
+			CertFile:           os.Getenv("CONSUL_TLSCERT"),
+			KeyFile:            os.Getenv("CONSUL_TLSKEY"),
+			InsecureSkipVerify: false,
 		}
 		tlsConfig, err := consulapi.SetupTLSConfig(tlsConfigDesc)
 		if err != nil {
-		   log.Fatal("Cannot set up Consul TLSConfig", err)
+			log.Fatal("Cannot set up Consul TLSConfig", err)
 		}
 		config.Scheme = "https"
 		transport := cleanhttp.DefaultPooledTransport()
@@ -113,6 +114,8 @@ func (r *ConsulAdapter) buildCheck(service *bridge.Service) *consulapi.AgentServ
 		if timeout := service.Attrs["check_timeout"]; timeout != "" {
 			check.Timeout = timeout
 		}
+	} else if docker := service.Attrs["check_docker"]; docker != "" {
+
 	} else {
 		return nil
 	}
