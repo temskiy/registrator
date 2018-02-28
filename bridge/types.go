@@ -41,8 +41,8 @@ type Service struct {
 	Attrs     map[string]string
 	TTL       int
 	Container string
-
 	Origin ServicePort
+	
 }
 
 type DeadContainer struct {
@@ -59,5 +59,6 @@ type ServicePort struct {
 	ContainerHostname string
 	ContainerID       string
 	ContainerName     string
+	ContainerIP       string
 	container         *dockerapi.Container
 }

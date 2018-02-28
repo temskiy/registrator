@@ -14,10 +14,11 @@ import (
 
 	"github.com/docker/docker/api/types/swarm"
 	dockerapi "github.com/fsouza/go-dockerclient"
+	// "github.com/robertkowalski/graylog-golang"
 )
 
 var serviceIDPattern = regexp.MustCompile(`^(.+?):([a-zA-Z0-9][a-zA-Z0-9_.-]+):[0-9]+(?::udp)?$`)
-
+// var Logger *gelf.Gelf
 type Bridge struct {
 	sync.Mutex
 	registry       RegistryAdapter
@@ -27,9 +28,30 @@ type Bridge struct {
 	config         Config
 }
 
+// func Log (message string) {
+// 	m:=`{
+// 		"version": "1.0",
+// 		"host": "localhost",
+// 		"timestamp": 1519725096,
+// 		"type": "error",
+// 		"facility": "Google Go",
+// 		"message": ` + message + `}`
+// 	Logger.Log(m)
+// 	log.Println(m)
+// 	}
+
 func New(docker *dockerapi.Client, adapterUri string, config Config) (*Bridge, error) {
+	// Logger = gelf.New(gelf.Config{
+	// 	GraylogPort:     12201,
+	// 	GraylogHostname: "10.0.0.217",
+	// 	Connection:      "lan",
+	// 	MaxChunkSizeWan: 42,
+	// 	MaxChunkSizeLan: 1337,
+	//   })
+	
 	if config.Mode == "services" {
 		log.Printf("Mode: services")
+		
 	}
 	if config.Mode == "containers" {
 		log.Printf("Mode: containers")
@@ -272,6 +294,7 @@ func (b *Bridge) add(containerId string, quiet bool) {
 		}
 		b.services[container.ID] = append(b.services[container.ID], service)
 		log.Println("added:", container.ID[:12], service.ID)
+		// Log("Added " + service.Name + " at " + service.Origin.HostIP)
 	}
 }
 
@@ -327,7 +350,7 @@ func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 
 	service := new(Service)
 	service.Origin = port
-	service.ID = hostname + ":" + container.Name[1:] + ":" + port.ExposedPort
+	
 	service.Name = serviceName
 	if isgroup && !metadataFromPort["name"] {
 		service.Name += "-" + port.ExposedPort
@@ -358,6 +381,15 @@ func (b *Bridge) newService(port ServicePort, isgroup bool) *Service {
 			log.Println("Label '" + b.config.UseIpFromLabel +
 				"' not found in container configuration")
 		}
+	}
+	
+	if b.config.Mode == "services" {
+		nets, _ := b.docker.NetworkInfo("docker_gwbridge")
+		service.Origin.ContainerIP = strings.Split(nets.Containers[service.Origin.ContainerID].IPv4Address,"/")[0]
+		service.ID = service.Origin.ContainerIP + ":" + container.Name[1:] + ":" + port.ExposedPort
+	} else {
+		service.Origin.ContainerIP = ""
+		service.ID = service.IP + ":" + container.Name[1:] + ":" + port.ExposedPort
 	}
 
 	// NetworkMode can point to another container (kuberenetes pods)

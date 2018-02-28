@@ -11,9 +11,11 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	"github.com/hashicorp/go-cleanhttp"
 	"github.com/temskiy/registrator/bridge"
+	
 )
 
 const DefaultInterval = "10s"
+
 
 func init() {
 	f := new(Factory)
@@ -94,12 +96,20 @@ func (r *ConsulAdapter) buildCheck(service *bridge.Service) *consulapi.AgentServ
 		check.Status = status
 	}
 	if path := service.Attrs["check_http"]; path != "" {
-		check.HTTP = fmt.Sprintf("http://%s:%d%s", service.IP, service.Port, path)
+		if (service.Origin.ContainerIP =="") {
+			check.HTTP = fmt.Sprintf("http://%s:%d%s", service.IP, service.Port, path)
+		} else {
+			check.HTTP = fmt.Sprintf("http://%s:%s%s", service.Origin.ContainerIP, service.Origin.ExposedPort, path)
+		}
 		if timeout := service.Attrs["check_timeout"]; timeout != "" {
 			check.Timeout = timeout
 		}
 	} else if path := service.Attrs["check_https"]; path != "" {
-		check.HTTP = fmt.Sprintf("https://%s:%d%s", service.IP, service.Port, path)
+		if (service.Origin.ContainerIP =="") {
+			check.HTTP = fmt.Sprintf("https://%s:%d%s", service.IP, service.Port, path)
+		} else {
+			check.HTTP = fmt.Sprintf("https://%s:%s%s", service.Origin.ContainerIP, service.Origin.ExposedPort, path)
+		}
 		if timeout := service.Attrs["check_timeout"]; timeout != "" {
 			check.Timeout = timeout
 		}

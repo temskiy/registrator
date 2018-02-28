@@ -12,6 +12,7 @@ import (
 	dockerapi "github.com/fsouza/go-dockerclient"
 	"github.com/gliderlabs/pkg/usage"
 	"github.com/temskiy/registrator/bridge"
+	
 )
 
 var Version string
@@ -45,8 +46,10 @@ func assert(err error) {
 	}
 }
 
-func main() {
 
+
+func main() {
+	
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
 		versionChecker.PrintVersion()
 		os.Exit(0)
