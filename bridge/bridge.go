@@ -513,13 +513,14 @@ func (b *Bridge) getPublishedServicePort(servicename string, port string) string
 }
 func (b *Bridge) getNodeStatus() string {
 	sn, _ := b.docker.InspectNode(Hostname)
-	if sn.ManagerStatus.Leader == true {
+	if b.config.Mode == "services" {
+		if sn.ManagerStatus.Leader == true {
+			return "leader"
 
-		return "leader"
-
+		}
 	}
-
-	return string(sn.Spec.Role)
+//	return string(sn.Spec.Role)
+	return ""
 }
 
 func (b *Bridge) getLeaderAddress() string {
